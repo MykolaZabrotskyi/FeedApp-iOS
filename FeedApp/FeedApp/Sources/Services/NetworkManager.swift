@@ -1,16 +1,11 @@
-//
-//  NetworkManager.swift
-//  FeedApp
-//
-//  Created by Mykola Zabrotskyi on 14.01.2026.
-//
-
 import Foundation
 
 enum NetworkError: Error {
     case invalidURL
     case noData
     case decodingError
+    case serverError(Int)
+    case unknown
 }
 
 class NetworkManager {
@@ -21,63 +16,44 @@ class NetworkManager {
     
     private let postsURL = "https://raw.githubusercontent.com/anton-natife/jsons/master/api/main.json"
     
-    func fetchPosts(completion: @escaping (Result<[Post], NetworkError>) -> Void) {
-        guard let url = URL(string: postsURL) else {
-            completion(.failure(.invalidURL))
-            return
+    private func fetch<T: Decodable>(from urlString: String) async throws -> T {
+        
+        guard let url = URL(string: urlString) else {
+            throw NetworkError.invalidURL
         }
         
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            if let _ = error {
-                completion(.failure(.noData))
-                return
-            }
-            
-            guard let data = data else {
-                completion(.failure(.noData))
-                return
-            }
-            
-            do {
-                let decoder = JSONDecoder()
-                let response = try decoder.decode(PostsResponse.self, from: data)
-                completion(.success(response.posts))
-            } catch {
-                print("Decoding error (Posts): \(error)")
-                completion(.failure(.decodingError))
-            }
+        let (data, response) = try await URLSession.shared.data(from: url)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.unknown
         }
-        task.resume()
+        
+        switch httpResponse.statusCode {
+        case 200...299:
+            break
+        case 400...599:
+            throw NetworkError.serverError(httpResponse.statusCode)
+        default:
+            throw NetworkError.unknown
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            print("Decoding error for \(T.self): \(error)")
+            throw NetworkError.decodingError
+        }
     }
     
-    func fetchPostDetails(id: Int, completion: @escaping (Result<PostDetail, NetworkError>) -> Void) {
-        let detailURLString = "https://raw.githubusercontent.com/anton-natife/jsons/master/api/posts/\(id).json"
-        
-        guard let url = URL(string: detailURLString) else {
-            completion(.failure(.invalidURL))
-            return
-        }
-        
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            if let _ = error {
-                completion(.failure(.noData))
-                return
-            }
-            
-            guard let data = data else {
-                completion(.failure(.noData))
-                return
-            }
-            
-            do {
-                let decoder = JSONDecoder()
-                let response = try decoder.decode(PostDetailResponse.self, from: data)
-                completion(.success(response.post))
-            } catch {
-                print("Decoding error (Detail): \(error)")
-                completion(.failure(.decodingError))
-            }
-        }
-        task.resume()
+    func fetchPosts() async throws -> [Post] {
+        let response: PostsResponse = try await fetch(from: postsURL)
+        return response.posts
+    }
+    
+    func fetchPostDetails(id: Int) async throws -> PostDetail {
+        let urlString = "https://raw.githubusercontent.com/anton-natife/jsons/master/api/posts/\(id).json"
+        let response: PostDetailResponse = try await fetch(from: urlString)
+        return response.post
     }
 }
