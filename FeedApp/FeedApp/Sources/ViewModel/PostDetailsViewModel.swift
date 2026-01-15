@@ -10,12 +10,26 @@ import Foundation
 @MainActor
 class PostDetailsViewModel {
     
+    struct PostDetailsDisplayModel {
+        let title: String
+        let description: String
+        let likesCount: String
+        let date: String
+        let imageUrl: String
+    }
+    
     private let postId: Int
     
-    private(set) var post: PostDetail?
+    private(set) var displayModel: PostDetailsDisplayModel?
     
     var onDataLoaded: (() -> Void)?
     var onError: ((String) -> Void)?
+    
+    private let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd MMMM yyyy"
+        return formatter
+    }()
     
     init(postId: Int) {
         self.postId = postId
@@ -24,11 +38,19 @@ class PostDetailsViewModel {
     func loadDetails() {
         Task {
             do {
-                let detail = try await NetworkManager.shared.fetchPostDetails(id: postId)
-                self.post = detail
-                self.onDataLoaded?()
+                let post = try await NetworkManager.shared.fetchPostDetails(id: postId)
+                
+                self.displayModel = PostDetailsDisplayModel(
+                    title: post.title,
+                    description: post.text,
+                    likesCount: "\(post.likesCount)",
+                    date: dateFormatter.string(from: Date(timeIntervalSince1970: TimeInterval(post.timestamp))),
+                    imageUrl: post.postImage
+                )
+                
+                onDataLoaded?()
             } catch {
-                self.onError?(error.localizedDescription)
+                onError?(error.localizedDescription)
             }
         }
     }

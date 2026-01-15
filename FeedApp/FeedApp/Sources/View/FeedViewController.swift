@@ -95,18 +95,19 @@ extension FeedViewController: UICollectionViewDataSource, UICollectionViewDelega
             return UICollectionViewCell()
         }
         
-        let post = viewModel.post(at: indexPath.row)
+        let cellVM = viewModel.cellViewModel(for: indexPath.row, containerWidth: collectionView.bounds.width)
         
-        let isExpanded = viewModel.isPostExpanded(at: indexPath.row)
-        
-        cell.configure(with: post, isExpanded: isExpanded)
+        cell.configure(with: cellVM)
         
         cell.onExpandTapped = { [weak self] in
             guard let self = self else { return }
-            
             self.viewModel.togglePostExpansion(at: indexPath.row)
             
-            collectionView.reloadItems(at: [indexPath])
+            self.collectionView.performBatchUpdates({
+                let updatedVM = self.viewModel.cellViewModel(for: indexPath.row, containerWidth: collectionView.bounds.width)
+                cell.configure(with: updatedVM)
+                self.collectionView.collectionViewLayout.invalidateLayout()
+            })
         }
         
         return cell
