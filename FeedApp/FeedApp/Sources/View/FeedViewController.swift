@@ -14,7 +14,7 @@ class FeedViewController: UIViewController {
     private lazy var collectionView: UICollectionView = {
         var config = UICollectionLayoutListConfiguration(appearance: .plain)
         
-        config.showsSeparators = false
+        config.showsSeparators = true
         
         let layout = UICollectionViewCompositionalLayout.list(using: config)
         
@@ -27,6 +27,10 @@ class FeedViewController: UIViewController {
         return cv
     }()
     
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .lightContent
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -36,9 +40,23 @@ class FeedViewController: UIViewController {
     }
     
     private func setupUI() {
-        title = "Feed"
+        title = "FeedApp"
         view.backgroundColor = .systemBackground
-        navigationController?.navigationBar.prefersLargeTitles = true
+        
+        let appearance = UINavigationBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = .systemIndigo
+        
+        appearance.titleTextAttributes = [.foregroundColor: UIColor.white]
+        appearance.largeTitleTextAttributes = [.foregroundColor: UIColor.white]
+        
+        navigationController?.navigationBar.prefersLargeTitles = false
+        
+        navigationController?.navigationBar.standardAppearance = appearance
+        navigationController?.navigationBar.scrollEdgeAppearance = appearance
+        navigationController?.navigationBar.compactAppearance = appearance
+        
+        navigationController?.navigationBar.tintColor = .white
         
         view.addSubview(collectionView)
         
@@ -96,7 +114,11 @@ extension FeedViewController: UICollectionViewDataSource, UICollectionViewDelega
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         collectionView.deselectItem(at: indexPath, animated: true)
-        //let post = viewModel.post(at: indexPath.row)
-        // navigationController?.pushViewController(...)
+        
+        let post = viewModel.post(at: indexPath.row)
+        
+        let detailVC = PostDetailsViewController(postId: post.postId)
+        
+        navigationController?.pushViewController(detailVC, animated: true)
     }
 }

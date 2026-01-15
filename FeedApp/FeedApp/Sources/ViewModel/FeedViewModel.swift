@@ -22,8 +22,7 @@ class FeedViewModel {
             do {
                 let loadedPosts = try await NetworkManager.shared.fetchPosts()
                 self.posts = loadedPosts
-                
-                // self.expandedPostIds.removeAll()
+
                 self.onDataLoaded?()
             } catch {
                 self.onError?(error.localizedDescription)
