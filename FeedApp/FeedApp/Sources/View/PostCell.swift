@@ -13,6 +13,8 @@ class PostCell: UICollectionViewCell {
     
     var onExpandTapped: (() -> Void)?
     
+    private var buttonHeightConstraint: NSLayoutConstraint?
+    
     private enum Metrics {
         
         static let padding: CGFloat = 16
@@ -30,6 +32,7 @@ class PostCell: UICollectionViewCell {
             static let color: UIColor = .systemIndigo
             static let cornerRadius: CGFloat = 8
             static let font: UIFont = .systemFont(ofSize: 14, weight: .medium)
+            static let height: CGFloat = 36
         }
         
         struct Fonts {
@@ -41,7 +44,7 @@ class PostCell: UICollectionViewCell {
     private let titleLabel: UILabel = {
         let label = UILabel()
         label.font = Metrics.Fonts.title
-        label.textColor = .label
+        label.textColor = .systemIndigo
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -99,20 +102,66 @@ class PostCell: UICollectionViewCell {
         onExpandTapped?()
     }
     
+    private func isTextLongerThanTwoLines(text: String, font: UIFont, width: CGFloat) -> Bool {
+        let maxSize = CGSize(width: width, height: .greatestFiniteMagnitude)
+        
+        let textRect = text.boundingRect(
+            with: maxSize,
+            options: .usesLineFragmentOrigin,
+            attributes: [.font: font],
+            context: nil
+        )
+        
+        let lineHeight = font.lineHeight
+        
+        let numberOfLines = ceil(textRect.height / lineHeight)
+        
+        return numberOfLines > 2
+    }
+    
     func configure(with post: Post, isExpanded: Bool) {
         titleLabel.text = post.title
         bodyLabel.text = post.previewText
         
-        if isExpanded {
-            bodyLabel.numberOfLines = 0
-            expandButton.setTitle("Collapse", for: .normal)
+        var screenWidth: CGFloat = 0
+        
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+            screenWidth = windowScene.screen.bounds.width
         } else {
-            bodyLabel.numberOfLines = 2
-            expandButton.setTitle("Expand", for: .normal)
+            // Фоллбек (на випадок якщо щось піде не так, хоча це малоймовірно)
+            screenWidth = 375 // Стандартна ширина
+        }
+        
+        let contentWidth = screenWidth - (Metrics.padding * 2)
+        // 2. Перевіряємо, чи текст довгий
+        let isLongText = isTextLongerThanTwoLines(
+            text: post.previewText,
+            font: Metrics.Fonts.body,
+            width: contentWidth
+        )
+        
+        // 3. Логіка кнопки
+        if !isLongText {
+            // А. Текст короткий -> ховаємо кнопку
+            expandButton.isHidden = true
+            buttonHeightConstraint?.constant = 0 // Сплющуємо кнопку
+            bodyLabel.numberOfLines = 0 // Показуємо все (там і так < 2 рядків)
+        } else {
+            // Б. Текст довгий -> показуємо кнопку і обробляємо Expand/Collapse
+            expandButton.isHidden = false
+            buttonHeightConstraint?.constant = Metrics.Button.height // Відновлюємо висоту
+            
+            if isExpanded {
+                bodyLabel.numberOfLines = 0
+                expandButton.setTitle("Collapse", for: .normal)
+            } else {
+                bodyLabel.numberOfLines = 2
+                expandButton.setTitle("Expand", for: .normal)
+            }
         }
         
         let imageAttachment = NSTextAttachment()
-        let config = UIImage.SymbolConfiguration(scale: .small)
+        let config = UIImage.SymbolConfiguration(scale: Metrics.Likes.iconScale)
         if let image = UIImage(systemName: Metrics.Likes.iconName, withConfiguration: config)?
             .withTintColor(Metrics.Likes.color, renderingMode: .alwaysOriginal) {
             imageAttachment.image = image
@@ -139,6 +188,9 @@ class PostCell: UICollectionViewCell {
         contentView.addSubview(likesLabel)
         contentView.addSubview(dateLabel)
         
+        buttonHeightConstraint = expandButton.heightAnchor.constraint(equalToConstant: Metrics.Button.height)
+        buttonHeightConstraint?.isActive = true
+        
         NSLayoutConstraint.activate([
             titleLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: Metrics.padding),
             titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Metrics.padding),
@@ -151,7 +203,6 @@ class PostCell: UICollectionViewCell {
             expandButton.topAnchor.constraint(equalTo: bodyLabel.bottomAnchor, constant: Metrics.spacing),
             expandButton.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Metrics.padding),
             expandButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Metrics.padding),
-            expandButton.heightAnchor.constraint(equalToConstant: 36),
             
             likesLabel.topAnchor.constraint(equalTo: expandButton.bottomAnchor, constant: Metrics.spacing),
             likesLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Metrics.padding),

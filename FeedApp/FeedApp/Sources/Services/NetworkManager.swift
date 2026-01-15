@@ -41,7 +41,6 @@ class NetworkManager {
             let decoder = JSONDecoder()
             return try decoder.decode(T.self, from: data)
         } catch {
-            print("Decoding error for \(T.self): \(error)")
             throw NetworkError.decodingError
         }
     }
