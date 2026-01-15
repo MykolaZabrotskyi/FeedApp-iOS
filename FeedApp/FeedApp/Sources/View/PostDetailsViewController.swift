@@ -15,8 +15,6 @@ class PostDetailsViewController: UIViewController {
         
         static let padding: CGFloat = 16
         
-        static let spacing: CGFloat = 8
-        
         struct Likes {
             static let color: UIColor = .systemIndigo
             static let font: UIFont = .systemFont(ofSize: 14, weight: .medium)
@@ -24,15 +22,20 @@ class PostDetailsViewController: UIViewController {
             static let iconScale: UIImage.SymbolScale = .small
         }
         
-        struct Button {
-            static let color: UIColor = .systemIndigo
-            static let cornerRadius: CGFloat = 8
-            static let font: UIFont = .systemFont(ofSize: 14, weight: .medium)
+        struct Image {
+            static let borderWidth: CGFloat = 4
+            static let cornerRadius: CGFloat = 12
+            static let borderColor: CGColor = UIColor.systemIndigo.cgColor
         }
         
-        struct Fonts {
-            static let title: UIFont = .systemFont(ofSize: 18, weight: .bold)
-            static let body: UIFont = .systemFont(ofSize: 16, weight: .regular)
+        struct Title {
+            static let font: UIFont = .systemFont(ofSize: 22, weight: .bold)
+            static let color: UIColor = .systemIndigo
+        }
+        
+        struct Description {
+            static let font: UIFont = .systemFont(ofSize: 18)
+            static let color: UIColor = .systemIndigo
         }
     }
     
@@ -55,18 +58,18 @@ class PostDetailsViewController: UIViewController {
         iv.backgroundColor = .systemGray5
         iv.translatesAutoresizingMaskIntoConstraints = false
         
-        iv.layer.borderWidth = 4
-        iv.layer.borderColor = UIColor.systemIndigo.cgColor
+        iv.layer.borderWidth = Metrics.Image.borderWidth
+        iv.layer.borderColor = Metrics.Image.borderColor
 
-        iv.layer.cornerRadius = 12
+        iv.layer.cornerRadius = Metrics.Image.cornerRadius
         
         return iv
     }()
     
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.textColor = .systemIndigo
-        label.font = .systemFont(ofSize: 22, weight: .bold)
+        label.textColor = Metrics.Title.color
+        label.font = Metrics.Title.font
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -74,7 +77,7 @@ class PostDetailsViewController: UIViewController {
     
     private let descriptionLabel: UILabel = {
         let label = UILabel()
-        label.font = .systemFont(ofSize: 18)
+        label.font = Metrics.Description.font
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -82,7 +85,7 @@ class PostDetailsViewController: UIViewController {
     
     private let likesLabel: UILabel = {
         let label = UILabel()
-        label.textColor = .systemIndigo
+        label.textColor = Metrics.Likes.color
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -124,31 +127,29 @@ class PostDetailsViewController: UIViewController {
     }
     
     private func updateUI() {
-        guard let post = viewModel.post else { return }
+        guard let model = viewModel.displayModel else { return }
         
-        titleLabel.text = post.title
-        descriptionLabel.text = post.text
+        titleLabel.text = model.title
+        descriptionLabel.text = model.description
+        dateLabel.text = model.date
+        postImageView.loadImage(from: model.imageUrl)
         
+        setupLikesLabel(with: model.likesCount)
+    }
+
+    private func setupLikesLabel(with count: String) {
         let imageAttachment = NSTextAttachment()
         let config = UIImage.SymbolConfiguration(scale: Metrics.Likes.iconScale)
+        
         if let image = UIImage(systemName: Metrics.Likes.iconName, withConfiguration: config)?
             .withTintColor(Metrics.Likes.color, renderingMode: .alwaysOriginal) {
             imageAttachment.image = image
-            imageAttachment.bounds = CGRect(x: 0, y: -2, width: image.size.width, height: image.size.height)
+            imageAttachment.bounds = CGRect(x: 0, y: -1.8, width: image.size.width, height: image.size.height)
         }
         
         let fullString = NSMutableAttributedString(attachment: imageAttachment)
-        
-        let textString = NSAttributedString(string: " \(post.likesCount)")
-        fullString.append(textString)
+        fullString.append(NSAttributedString(string: " \(count)"))
         likesLabel.attributedText = fullString
-        
-        let date = Date(timeIntervalSince1970: TimeInterval(post.timestamp))
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd MMMM yyyy"
-        dateLabel.text = formatter.string(from: date)
-        
-        postImageView.loadImage(from: post.postImage)
     }
     
     private func setupUI() {
@@ -164,8 +165,6 @@ class PostDetailsViewController: UIViewController {
         contentView.addSubview(likesLabel)
         contentView.addSubview(dateLabel)
         
-        let padding: CGFloat = 16
-        
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -178,25 +177,25 @@ class PostDetailsViewController: UIViewController {
             contentView.bottomAnchor.constraint(equalTo: scrollView.bottomAnchor),
             contentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
             
-            postImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: padding), // Відступ зверху
-            postImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding), // Відступ зліва
-            postImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding), // Відступ справа
-            postImageView.heightAnchor.constraint(equalToConstant: 250), // Фіксована висота
+            postImageView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: Metrics.padding),
+            postImageView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Metrics.padding),
+            postImageView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Metrics.padding),
+            postImageView.heightAnchor.constraint(equalToConstant: 250),
             
-            titleLabel.topAnchor.constraint(equalTo: postImageView.bottomAnchor, constant: padding),
-            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
-            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            titleLabel.topAnchor.constraint(equalTo: postImageView.bottomAnchor, constant: Metrics.padding),
+            titleLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Metrics.padding),
+            titleLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Metrics.padding),
             
-            descriptionLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: padding),
-            descriptionLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
-            descriptionLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding),
+            descriptionLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: Metrics.padding),
+            descriptionLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Metrics.padding),
+            descriptionLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Metrics.padding),
             
             likesLabel.topAnchor.constraint(equalTo: descriptionLabel.bottomAnchor, constant: 20),
-            likesLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: padding),
-            likesLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -padding),
+            likesLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Metrics.padding),
+            likesLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -Metrics.padding),
             
             dateLabel.centerYAnchor.constraint(equalTo: likesLabel.centerYAnchor),
-            dateLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -padding)
+            dateLabel.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Metrics.padding)
         ])
     }
 }

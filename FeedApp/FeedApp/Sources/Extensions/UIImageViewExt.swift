@@ -25,7 +25,7 @@ extension UIImageView {
             } catch {
                 await MainActor.run {
                     self.image = UIImage(systemName: "photo.badge.exclamationmark")
-                    self.tintColor = .systemGray3
+                    self.tintColor = .systemGray5
                     self.contentMode = .center
                     self.backgroundColor = .secondarySystemBackground
                 }

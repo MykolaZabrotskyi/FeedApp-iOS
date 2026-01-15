@@ -30,21 +30,25 @@ class PostCell: UICollectionViewCell {
         
         struct Button {
             static let color: UIColor = .systemIndigo
-            static let cornerRadius: CGFloat = 8
+            static let cornerRadius: CGFloat = 12
             static let font: UIFont = .systemFont(ofSize: 14, weight: .medium)
             static let height: CGFloat = 36
         }
         
+        struct Title {
+            static let font: UIFont = .systemFont(ofSize: 18, weight: .bold)
+            static let color: UIColor = .systemIndigo
+        }
+        
         struct Fonts {
-            static let title: UIFont = .systemFont(ofSize: 18, weight: .bold)
             static let body: UIFont = .systemFont(ofSize: 16, weight: .regular)
         }
     }
     
     private let titleLabel: UILabel = {
         let label = UILabel()
-        label.font = Metrics.Fonts.title
-        label.textColor = .systemIndigo
+        label.font = Metrics.Title.font
+        label.textColor = Metrics.Title.color
         label.numberOfLines = 1
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -119,47 +123,26 @@ class PostCell: UICollectionViewCell {
         return numberOfLines > 2
     }
     
-    func configure(with post: Post, isExpanded: Bool) {
-        titleLabel.text = post.title
-        bodyLabel.text = post.previewText
+    func configure(with viewModel: FeedViewModel.PostCellViewModel) {
+        titleLabel.text = viewModel.title
+        bodyLabel.text = viewModel.body
+        dateLabel.text = viewModel.dateText
         
-        var screenWidth: CGFloat = 0
-        
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
-            screenWidth = windowScene.screen.bounds.width
-        } else {
-            // Фоллбек (на випадок якщо щось піде не так, хоча це малоймовірно)
-            screenWidth = 375 // Стандартна ширина
-        }
-        
-        let contentWidth = screenWidth - (Metrics.padding * 2)
-        // 2. Перевіряємо, чи текст довгий
-        let isLongText = isTextLongerThanTwoLines(
-            text: post.previewText,
-            font: Metrics.Fonts.body,
-            width: contentWidth
-        )
-        
-        // 3. Логіка кнопки
-        if !isLongText {
-            // А. Текст короткий -> ховаємо кнопку
+        if !viewModel.showExpandButton {
             expandButton.isHidden = true
-            buttonHeightConstraint?.constant = 0 // Сплющуємо кнопку
-            bodyLabel.numberOfLines = 0 // Показуємо все (там і так < 2 рядків)
+            buttonHeightConstraint?.constant = 0
+            bodyLabel.numberOfLines = 0
         } else {
-            // Б. Текст довгий -> показуємо кнопку і обробляємо Expand/Collapse
             expandButton.isHidden = false
-            buttonHeightConstraint?.constant = Metrics.Button.height // Відновлюємо висоту
-            
-            if isExpanded {
-                bodyLabel.numberOfLines = 0
-                expandButton.setTitle("Collapse", for: .normal)
-            } else {
-                bodyLabel.numberOfLines = 2
-                expandButton.setTitle("Expand", for: .normal)
-            }
+            buttonHeightConstraint?.constant = Metrics.Button.height
+            bodyLabel.numberOfLines = viewModel.isExpanded ? 0 : 2
+            expandButton.setTitle(viewModel.isExpanded ? "Collapse" : "Expand", for: .normal)
         }
         
+        setupLikesLabel(with: viewModel.likesText)
+    }
+    
+    private func setupLikesLabel(with likes: String) {
         let imageAttachment = NSTextAttachment()
         let config = UIImage.SymbolConfiguration(scale: Metrics.Likes.iconScale)
         if let image = UIImage(systemName: Metrics.Likes.iconName, withConfiguration: config)?
@@ -169,14 +152,8 @@ class PostCell: UICollectionViewCell {
         }
         
         let fullString = NSMutableAttributedString(attachment: imageAttachment)
-        let textString = NSAttributedString(string: " \(post.likesCount)")
-        fullString.append(textString)
+        fullString.append(NSAttributedString(string: " \(likes)"))
         likesLabel.attributedText = fullString
-        
-        let date = Date(timeIntervalSince1970: TimeInterval(post.timestamp))
-        let formatter = DateFormatter()
-        formatter.dateFormat = "dd MMM yyyy"
-        dateLabel.text = formatter.string(from: date)
     }
     
     private func setupUI() {
