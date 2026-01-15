@@ -8,7 +8,7 @@
 import UIKit
 
 class FeedViewController: UIViewController {
-
+    
     private let viewModel = FeedViewModel()
     
     private lazy var collectionView: UICollectionView = {
@@ -26,7 +26,7 @@ class FeedViewController: UIViewController {
         
         return cv
     }()
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
@@ -79,9 +79,17 @@ extension FeedViewController: UICollectionViewDataSource, UICollectionViewDelega
         
         let post = viewModel.post(at: indexPath.row)
         
-        cell.configure(with: post)
-    
-        // Expand logic
+        let isExpanded = viewModel.isPostExpanded(at: indexPath.row)
+        
+        cell.configure(with: post, isExpanded: isExpanded)
+        
+        cell.onExpandTapped = { [weak self] in
+            guard let self = self else { return }
+            
+            self.viewModel.togglePostExpansion(at: indexPath.row)
+            
+            collectionView.reloadItems(at: [indexPath])
+        }
         
         return cell
     }

@@ -11,6 +11,8 @@ class PostCell: UICollectionViewCell {
     
     static let id = "PostCell"
     
+    var onExpandTapped: (() -> Void)?
+    
     private enum Metrics {
         
         static let padding: CGFloat = 16
@@ -54,7 +56,7 @@ class PostCell: UICollectionViewCell {
         return label
     }()
     
-    let expandButton: UIButton = {
+    lazy var expandButton: UIButton = {
         let button = UIButton(type: .system)
         button.setTitle("Expand", for: .normal)
         button.setTitleColor(.white, for: .normal)
@@ -62,6 +64,8 @@ class PostCell: UICollectionViewCell {
         button.layer.cornerRadius = Metrics.Button.cornerRadius
         button.titleLabel?.font = Metrics.Button.font
         button.translatesAutoresizingMaskIntoConstraints = false
+        
+        button.addTarget(self, action: #selector(expandButtonAction), for: .touchUpInside)
         return button
     }()
     
@@ -91,25 +95,33 @@ class PostCell: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
     
-    func configure(with post: Post) {
+    @objc private func expandButtonAction() {
+        onExpandTapped?()
+    }
+    
+    func configure(with post: Post, isExpanded: Bool) {
         titleLabel.text = post.title
         bodyLabel.text = post.previewText
         
-        let imageAttachment = NSTextAttachment()
+        if isExpanded {
+            bodyLabel.numberOfLines = 0
+            expandButton.setTitle("Collapse", for: .normal)
+        } else {
+            bodyLabel.numberOfLines = 2
+            expandButton.setTitle("Expand", for: .normal)
+        }
         
+        let imageAttachment = NSTextAttachment()
         let config = UIImage.SymbolConfiguration(scale: .small)
-        if let image = UIImage(systemName: "heart.fill", withConfiguration: config)?
+        if let image = UIImage(systemName: Metrics.Likes.iconName, withConfiguration: config)?
             .withTintColor(Metrics.Likes.color, renderingMode: .alwaysOriginal) {
             imageAttachment.image = image
-            
             imageAttachment.bounds = CGRect(x: 0, y: -2.5, width: image.size.width, height: image.size.height)
         }
         
         let fullString = NSMutableAttributedString(attachment: imageAttachment)
-        
         let textString = NSAttributedString(string: " \(post.likesCount)")
         fullString.append(textString)
-        
         likesLabel.attributedText = fullString
         
         let date = Date(timeIntervalSince1970: TimeInterval(post.timestamp))
