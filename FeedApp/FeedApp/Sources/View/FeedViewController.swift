@@ -8,65 +8,95 @@
 import UIKit
 
 class FeedViewController: UIViewController {
-
-    private lazy var testLabel: UILabel = {
-        let label = UILabel()
-        label.text = "FeedApp"
-        label.font = .systemFont(ofSize: 24, weight: .bold)
-        label.textColor = .label
-        label.textAlignment = .center
+    
+    private let viewModel = FeedViewModel()
+    
+    private lazy var collectionView: UICollectionView = {
+        var config = UICollectionLayoutListConfiguration(appearance: .plain)
         
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
+        config.showsSeparators = false
+        
+        let layout = UICollectionViewCompositionalLayout.list(using: config)
+        
+        let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
+        cv.backgroundColor = .systemBackground
+        cv.translatesAutoresizingMaskIntoConstraints = false
+        
+        cv.register(PostCell.self, forCellWithReuseIdentifier: PostCell.id)
+        
+        return cv
     }()
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        setupBindings()
         
-        print("Downloading...")
-        
-        Task {
-            do {
-                let posts = try await NetworkManager.shared.fetchPosts()
-                print("Feed loaded! Posts received: \(posts.count)")
-                
-                if let firstPost = posts.first {
-                    print("Trying to load details for post ID: \(firstPost.postId)")
-                    
-                    await testDetailLoading(id: firstPost.postId)
-                }
-                
-            } catch {
-                print("Error loading feed: \(error)")
-            }
-        }
-    }
-    
-    private func testDetailLoading(id: Int) async {
-        do {
-            let detail = try await NetworkManager.shared.fetchPostDetails(id: id)
-            
-            print("Details uploaded successfully!")
-            print("   Title: \(detail.title)")
-            print("   Full text (first 50 characters): \(detail.text.prefix(50))...")
-            print("   Picture: \(detail.postImage)")
-            
-        } catch {
-            print("Error loading details: \(error)")
-        }
+        viewModel.loadPosts()
     }
     
     private func setupUI() {
-        view.backgroundColor = .systemBackground
         title = "Feed"
+        view.backgroundColor = .systemBackground
         navigationController?.navigationBar.prefersLargeTitles = true
         
-        view.addSubview(testLabel)
+        view.addSubview(collectionView)
+        
+        collectionView.dataSource = self
+        collectionView.delegate = self
         
         NSLayoutConstraint.activate([
-            testLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            testLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+            collectionView.topAnchor.constraint(equalTo: view.topAnchor),
+            collectionView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            collectionView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            collectionView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+    }
+    
+    private func setupBindings() {
+        viewModel.onDataLoaded = { [weak self] in
+            self?.collectionView.reloadData()
+        }
+        
+        viewModel.onError = { [weak self] errorMessage in
+            let alert = UIAlertController(title: "Error", message: errorMessage, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default))
+            self?.present(alert, animated: true)
+        }
+    }
+}
+
+extension FeedViewController: UICollectionViewDataSource, UICollectionViewDelegate {
+    
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return viewModel.numberOfPosts()
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: PostCell.id, for: indexPath) as? PostCell else {
+            return UICollectionViewCell()
+        }
+        
+        let post = viewModel.post(at: indexPath.row)
+        
+        let isExpanded = viewModel.isPostExpanded(at: indexPath.row)
+        
+        cell.configure(with: post, isExpanded: isExpanded)
+        
+        cell.onExpandTapped = { [weak self] in
+            guard let self = self else { return }
+            
+            self.viewModel.togglePostExpansion(at: indexPath.row)
+            
+            collectionView.reloadItems(at: [indexPath])
+        }
+        
+        return cell
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        collectionView.deselectItem(at: indexPath, animated: true)
+        //let post = viewModel.post(at: indexPath.row)
+        // navigationController?.pushViewController(...)
     }
 }
